@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lively Spelling Quest - Sound Fix</title>
+    <style>
+        :root {
+            --primary: #FF6B6B;
+            --secondary: #4ECDC4;
+            --accent: #FFE66D;
+            --dark: #2F2F2F;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Chalkboard SE', cursive;
+            background: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-image: radial-gradient(#ccc 10%, transparent 10%);
+            background-size: 20px 20px;
+        }
+
+        #game-container {
+            background: white;
+            padding: 30px;
+            border-radius: 30px;
+            border: 6px solid var(--dark);
+            box-shadow: 10px 10px 0px var(--secondary);
+            text-align: center;
+            width: 90%;
+            max-width: 550px;
+            position: relative;
+        }
+
+        .hidden { display: none !important; }
+
+        /* Character Selection */
+        .char-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .char-card {
+            border: 4px solid #eee;
+            border-radius: 20px;
+            padding: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #fff;
+        }
+
+        .char-card:hover { 
+            transform: translateY(-5px); 
+            border-color: var(--primary);
+            background: #fff9f9;
+        }
+
+        /* Gameplay UI */
+        #word-image {
+            width: 180px;
+            height: 180px;
+            object-fit: contain;
+            margin: 20px 0;
+            filter: drop-shadow(5px 5px 0px #ddd);
+            border-radius: 15px;
+        }
+
+        #display-word {
+            font-size: 3rem;
+            letter-spacing: 8px;
+            margin-bottom: 25px;
+            color: var(--dark);
+            text-transform: uppercase;
+        }
+
+        .letter-bank {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .letter-btn {
+            padding: 15px 22px;
+            font-size: 1.5rem;
+            background: var(--accent);
+            border: 3px solid var(--dark);
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: bold;
+            box-shadow: 4px 4px 0px var(--dark);
+            transition: 0.1s;
+        }
+
+        .letter-btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: 2px 2px 0px var(--dark);
+        }
+
+        #status-msg {
+            height: 30px;
+            margin-top: 15px;
+            font-weight: bold;
+            font-size: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <audio id="bg-music" loop preload="auto">
+        <source src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" type="audio/mpeg">
+    </audio>
+    
+    <audio id="sfx-correct" preload="auto">
+        <source src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" type="audio/mpeg">
+    </audio>
+
+    <div id="game-container">
+        <div id="setup-screen">
+            <h1 style="color: var(--primary);">Pick Your Hero!</h1>
+            <div class="char-grid">
+                <div class="char-card" onclick="startGame('Pikachu', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png')">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/25.png" alt="Pikachu" width="100">
+                    <p>Pikachu</p>
+                </div>
+                <div class="char-card" onclick="startGame('Eevee', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png')">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/133.png" alt="Eevee" width="100">
+                    <p>Eevee</p>
+                </div>
+                <div class="char-card" onclick="startGame('Bulbasaur', 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png')">
+                    <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/1.png" alt="Bulbasaur" width="100">
+                    <p>Bulbasaur</p>
+                </div>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <img id="player-img" src="" width="40">
+                <h2 id="player-info" style="margin: 0; color: var(--secondary);"></h2>
+            </div>
+
+            <img id="word-image" src="" alt="Word to spell">
+            <div id="display-word"></div>
+            <div class="letter-bank" id="letter-buttons"></div>
+            <div id="status-msg"></div>
+        </div>
+    </div>
+
+    <script>
+        const wordList = [
+            { w: "SNAIL", img: "https://th.bing.com/th/id/R.fb35b461a54a5c503e262b05acce23bf?rik=ybfUc6tJOvEksA&pid=ImgRaw&r=0" },
+            { w: "RAIN", img: "https://media1.giphy.com/media/PbOaO2fedzQLm/giphy.gif" },
+            { w: "TAIL", img: "https://media1.tenor.com/m/UY17HNz6T48AAAAC/beastars-legosi.gif" },
+            { w: "TRAIN", img: "https://th.bing.com/th/id/R.971798267922fdff30686894e3d0f8f6?rik=vrzb7ZpZUjSERg&pid=ImgRaw&r=0" },
+            { w: "DOG", img: "https://i.gifer.com/37Jt.gif" },
+            { w: "CAT", img: "https://th.bing.com/th/id/R.14588c31fae16973410744e31f8076bf?rik=1buYpEAaGPRkKw&riu=http%3a%2f%2fwww.reactiongifs.com%2fr%2fcat.gif&ehk=%2b4ERIsYQYuPxCAMczIKPm9pcH%2bzc0JNreiwSVIK7yIk%3d&risl=&pid=ImgRaw&r=0" },
+            { w: "JET", img: "https://media.tenor.com/0rjlHHFJCRkAAAAd/fighter-jet-fighter-aircraft.gif" },
+            { w: "NINE", img: "https://media1.tenor.com/m/IWqkGdjWoe8AAAAC/number-9.gif" },
+            { w: "WEB", img: "https://media1.giphy.com/media/qc5fbrb4qpupRA9r4o/giphy.gif" },
+            { w: "FLAG", img: "https://th.bing.com/th/id/R.e89f93f294540e4d1bf08de2cb276116?rik=AnfSFBu3a9DFQw&riu=http%3a%2f%2fwww.fg-a.com%2fflags%2ftaiwan-flag-animated-2.gif&ehk=vTbHINhLVxF%2b3UsgoeyRlWrNYwV1QRFvm2U3HMzpoIg%3d&risl=&pid=ImgRaw&r=0" }
+        ];
+
+        let currentIndex = 0;
+        let currentGuess = "";
+        const bgMusic = document.getElementById('bg-music');
+        const sfxCorrect = document.getElementById('sfx-correct');
+
+        function startGame(name, img) {
+            document.getElementById('setup-screen').classList.add('hidden');
+            document.getElementById('game-screen').classList.remove('hidden');
+            document.getElementById('player-info').innerText = name + "'s Turn!";
+            document.getElementById('player-img').src = img;
+            
+            // Try to play music (browser requires user click first, which happened here)
+            bgMusic.volume = 0.2;
+            bgMusic.play();
+            
+            loadLevel();
+        }
+
+        function loadLevel() {
+            currentGuess = "";
+            const data = wordList[currentIndex];
+            document.getElementById('word-image').src = data.img;
+            document.getElementById('status-msg').innerText = "";
+            
+            renderWord();
+            renderButtons();
+        }
+
+        function renderWord() {
+            const target = wordList[currentIndex].w;
+            let html = "";
+            for(let i=0; i < target.length; i++) {
+                html += (currentGuess[i] || "_") + " ";
+            }
+            document.getElementById('display-word').innerText = html.trim();
+        }
+
+        function renderButtons() {
+            const container = document.getElementById('letter-buttons');
+            container.innerHTML = "";
+            const targetWord = wordList[currentIndex].w;
+            
+            let letters = (targetWord + "PLMOKN").split("");
+            letters = [...new Set(letters)].sort(() => Math.random() - 0.5);
+
+            letters.forEach(char => {
+                const btn = document.createElement('button');
+                btn.className = "letter-btn";
+                btn.innerText = char;
+                btn.onclick = () => handleInput(char);
+                container.appendChild(btn);
+            });
+        }
+
+        function handleInput(char) {
+            const target = wordList[currentIndex].w;
+            
+            if (target[currentGuess.length] === char) {
+                currentGuess += char;
+                renderWord();
+                
+                if (currentGuess === target) {
+                    // Force the sound to play
+                    sfxCorrect.currentTime = 0; 
+                    sfxCorrect.play().catch(e => console.log("Sound error:", e));
+                    
+                    document.getElementById('status-msg').innerText = "🌟 AMAZING! 🌟";
+                    document.getElementById('status-msg').style.color = "green";
+                    
+                    setTimeout(() => {
+                        currentIndex = (currentIndex + 1) % wordList.length;
+                        loadLevel();
+                    }, 1500);
+                }
+            } else {
+                document.getElementById('status-msg').innerText = "Oops! Try again!";
+                document.getElementById('status-msg').style.color = "red";
+                setTimeout(() => {
+                    if(document.getElementById('status-msg').innerText === "Oops! Try again!") {
+                        document.getElementById('status-msg').innerText = "";
+                    }
+                }, 800);
+            }
+        }
+    </script>
+</body>
+</html>
